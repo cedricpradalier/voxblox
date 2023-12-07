@@ -217,6 +217,12 @@ void TsdfServer::getServerConfigFromRosParam(
 }
 
 void TsdfServer::processBagFile(const std::string & bagfile, const std::string & topic) {
+    std::set<std::string> sstr;
+    sstr.insert(topic);
+    processBagFile(bagfile,sstr);
+}
+
+void TsdfServer::processBagFile(const std::string & bagfile, const std::set<std::string> & topics) {
     rosbag::Bag bag;
     bag.open(bagfile);  // BagMode is Read by default
 
@@ -228,7 +234,7 @@ void TsdfServer::processBagFile(const std::string & bagfile, const std::string &
 
     ros::Time t_target;
     size_t counter = 0;
-    ROS_INFO("Processing bag '%s' Topic '%s'",bagfile.c_str(),topic.c_str());
+    ROS_INFO("Processing bag '%s'",bagfile.c_str());
     for(rosbag::MessageInstance const m: rosbag::View(bag))
     {
         pQ2->clear();
@@ -255,7 +261,7 @@ void TsdfServer::processBagFile(const std::string & bagfile, const std::string &
 #endif
 
         sensor_msgs::PointCloud2::Ptr pc = m.instantiate<sensor_msgs::PointCloud2>();
-        if ((pc != nullptr) && ((m.getTopic()==topic) || topic.empty())) {
+        if ((pc != nullptr) && ((topics.find(m.getTopic())!=topics.end()) || topics.empty())) {
             if (pc->header.stamp > t_target) {
                 updateMesh();
                 t_target = pc->header.stamp + 

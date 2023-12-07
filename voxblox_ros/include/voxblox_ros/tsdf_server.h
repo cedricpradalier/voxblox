@@ -46,6 +46,7 @@ class TsdfServer {
   virtual ~TsdfServer() {}
 
   void processBagFile(const std::string & bagfile, const std::string & topic);
+  void processBagFile(const std::string & bagfile, const std::set<std::string> & topics);
 
   void getServerConfigFromRosParam(const ros::NodeHandle& nh_private);
 

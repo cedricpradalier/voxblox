@@ -1,3 +1,4 @@
+#include <boost/algorithm/string.hpp>
 #include "voxblox_ros/tsdf_server.h"
 
 #include <gflags/gflags.h>
@@ -17,7 +18,10 @@ int main(int argc, char** argv) {
   nh_private.param("bag_topic", bag_topic, bag_topic); 
 
   if (!bag_file.empty() && !bag_topic.empty()) {
-      node.processBagFile(bag_file,bag_topic);
+      std::set<std::string> topics;
+      boost::split(topics, bag_topic, boost::is_any_of(","));
+
+      node.processBagFile(bag_file,topics);
   }
 
   ros::spin();
