@@ -26,6 +26,7 @@ class Transformer {
 
   void transformCallback(const geometry_msgs::TransformStamped& transform_msg);
 
+  void setTransform(const geometry_msgs::TransformStamped& transform_msg);
  private:
   bool lookupTransformTf(const std::string& from_frame,
                          const std::string& to_frame,

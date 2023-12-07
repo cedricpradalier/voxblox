@@ -34,6 +34,9 @@ bool convertMeshLayerToMesh(const MeshLayer& mesh_layer, Mesh* mesh,
   } else {
     mesh_layer.getMesh(mesh);
   }
+  if (mesh->size() == 0u) {
+    LOG(WARNING) << "Resulting mesh has zero size";
+  }
   return mesh->size() > 0u;
 }
 
@@ -49,6 +52,7 @@ bool outputMeshLayerAsPly(const std::string& filename,
   Mesh combined_mesh(mesh_layer.block_size(), Point::Zero());
 
   if (!convertMeshLayerToMesh(mesh_layer, &combined_mesh, connected_mesh)) {
+    LOG(WARNING) << "convertMeshLayerToMesh failed";
     return false;
   }
 
@@ -63,6 +67,7 @@ bool outputMeshAsPly(const std::string& filename, const Mesh& mesh) {
   std::ofstream stream(filename.c_str());
 
   if (!stream) {
+    LOG(WARNING) << "PLY stream is wrong";
     return false;
   }
 

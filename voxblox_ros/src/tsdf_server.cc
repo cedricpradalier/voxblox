@@ -273,7 +273,7 @@ void TsdfServer::processBagFile(const std::string & bagfile, const std::string &
 
             for (size_t i=0;i<static_tf.size();i++) {
                 static_tf[i].header.stamp = pc->header.stamp;
-                transformer_.transformCallback(static_tf[i]);
+                transformer_.setTransform(static_tf[i]);
             }
 
             Transformation T;
@@ -291,7 +291,7 @@ void TsdfServer::processBagFile(const std::string & bagfile, const std::string &
                 if (tf->transforms[i].header.stamp == ros::Time()) {
                     static_tf.push_back(tf->transforms[i]);
                 }
-                transformer_.transformCallback(tf->transforms[i]);
+                transformer_.setTransform(tf->transforms[i]);
 #if 0
                 ROS_INFO("Added tf from %s to %s at %f",
                         tf->transforms[i].header.frame_id.c_str(),

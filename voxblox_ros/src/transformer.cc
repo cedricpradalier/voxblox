@@ -71,6 +71,17 @@ void Transformer::transformCallback(
   transform_queue_.push_back(transform_msg);
 }
 
+void Transformer::setTransform(
+    const geometry_msgs::TransformStamped& transform_msg) {
+  if (use_tf_transforms_) {
+      tf::StampedTransform stf;
+      tf::transformStampedMsgToTF(transform_msg,stf);
+      tf_listener_.setTransform(stf);
+  } else {
+      transform_queue_.push_back(transform_msg);
+  }
+}
+
 bool Transformer::lookupTransform(const std::string& from_frame,
                                   const std::string& to_frame,
                                   const ros::Time& timestamp,
