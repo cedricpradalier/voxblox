@@ -12,6 +12,14 @@ int main(int argc, char** argv) {
 
   voxblox::TsdfServer node(nh, nh_private);
 
+  std::string bag_file(""), bag_topic("");
+  nh_private.param("bag_file", bag_file, bag_file); 
+  nh_private.param("bag_topic", bag_topic, bag_topic); 
+
+  if (!bag_file.empty() && !bag_topic.empty()) {
+      node.processBagFile(bag_file,bag_topic);
+  }
+
   ros::spin();
   return 0;
 }

@@ -45,6 +45,8 @@ class TsdfServer {
              const MeshIntegratorConfig& mesh_config);
   virtual ~TsdfServer() {}
 
+  void processBagFile(const std::string & bagfile, const std::string & topic);
+
   void getServerConfigFromRosParam(const ros::NodeHandle& nh_private);
 
   void insertPointcloud(const sensor_msgs::PointCloud2::Ptr& pointcloud);
@@ -184,6 +186,9 @@ class TsdfServer {
 
   /// Pointcloud visualization settings.
   double slice_level_;
+
+  // Update frequency
+  double update_mesh_every_n_sec_;
 
   /// If the system should subscribe to a pointcloud giving points in freespace
   bool use_freespace_pointcloud_;

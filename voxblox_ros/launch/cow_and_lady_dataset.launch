@@ -1,6 +1,6 @@
 <launch>
   <arg name="play_bag" default="true" />
-  <arg name="bag_file" default="/path/to/data.bag"/>
+  <arg name="bag_file" default="/media/cedricp/4C7E92A97E928B7A/BugWright2/data_cow_and_lady.bag"/>
   <arg name="voxel_size" default="0.05"/>
 
   <!-- Download the dataset here: https://projects.asl.ethz.ch/datasets/doku.php?id=iros2017 -->

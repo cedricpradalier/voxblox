@@ -3,6 +3,12 @@
 #include <minkindr_conversions/kindr_msg.h>
 #include <minkindr_conversions/kindr_tf.h>
 
+#include <rosbag/bag.h>
+#include <rosbag/view.h>
+#include <boost/foreach.hpp>
+#include <tf2_msgs/TFMessage.h>
+#define foreach BOOST_FOREACH
+
 #include "voxblox_ros/conversions.h"
 #include "voxblox_ros/ros_params.h"
 
@@ -127,13 +133,13 @@ TsdfServer::TsdfServer(const ros::NodeHandle& nh,
       "publish_map", &TsdfServer::publishTsdfMapCallback, this);
 
   // If set, use a timer to progressively integrate the mesh.
-  double update_mesh_every_n_sec = 1.0;
-  nh_private_.param("update_mesh_every_n_sec", update_mesh_every_n_sec,
-                    update_mesh_every_n_sec);
+  update_mesh_every_n_sec_ = 1.0;
+  nh_private_.param("update_mesh_every_n_sec", update_mesh_every_n_sec_,
+                    update_mesh_every_n_sec_);
 
-  if (update_mesh_every_n_sec > 0.0) {
+  if (update_mesh_every_n_sec_ > 0.0) {
     update_mesh_timer_ =
-        nh_private_.createTimer(ros::Duration(update_mesh_every_n_sec),
+        nh_private_.createTimer(ros::Duration(update_mesh_every_n_sec_),
                                 &TsdfServer::updateMeshEvent, this);
   }
 
@@ -208,6 +214,101 @@ void TsdfServer::getServerConfigFromRosParam(
     ROS_ERROR_STREAM("Invalid color map: " << intensity_colormap);
   }
   color_map_->setMaxValue(intensity_max_value);
+}
+
+void TsdfServer::processBagFile(const std::string & bagfile, const std::string & topic) {
+    rosbag::Bag bag;
+    bag.open(bagfile);  // BagMode is Read by default
+
+    typedef std::list<sensor_msgs::PointCloud2::Ptr> PCQ;
+    PCQ Q1, Q2;
+    PCQ *pQ1 = &Q1, *pQ2=&Q2;
+
+    std::vector<geometry_msgs::TransformStamped> static_tf;
+
+    ros::Time t_target;
+    size_t counter = 0;
+    ROS_INFO("Processing bag '%s' Topic '%s'",bagfile.c_str(),topic.c_str());
+    for(rosbag::MessageInstance const m: rosbag::View(bag))
+    {
+        pQ2->clear();
+        if (pQ1->size()>2) {
+            ROS_INFO("PQ1 contains %d element",int(pQ1->size()));
+        }
+        for (PCQ::iterator it=pQ1->begin();it!=pQ1->end();it++) {
+            sensor_msgs::PointCloud2::Ptr pc = *it;
+            Transformation T;
+            if (!transformer_.lookupTransform(pc->header.frame_id,world_frame_,pc->header.stamp,&T)) {
+#if 1
+                ROS_INFO("Lookup transform returned false");
+#endif
+                pQ2->push_back(pc);
+            } else {
+                insertPointcloud(pc);
+            }
+        }
+        std::swap(pQ1,pQ2);
+#if 0
+        if (pQ1->size()) {
+            ROS_INFO("PQ1 still contains %d element",int(pQ1->size()));
+        }
+#endif
+
+        sensor_msgs::PointCloud2::Ptr pc = m.instantiate<sensor_msgs::PointCloud2>();
+        if ((pc != nullptr) && ((m.getTopic()==topic) || topic.empty())) {
+            if (pc->header.stamp > t_target) {
+                updateMesh();
+                t_target = pc->header.stamp + 
+                    ros::Duration(update_mesh_every_n_sec_);
+            }
+#if 0
+            ROS_INFO("PC in %s %f",
+                    pc->header.frame_id.c_str(),
+                    pc->header.stamp.toSec());
+#endif
+            counter += 1;
+            if (counter % 100 == 0) {
+                ROS_INFO("Processed %d clouds",int(counter));
+            }
+
+            for (size_t i=0;i<static_tf.size();i++) {
+                static_tf[i].header.stamp = pc->header.stamp;
+                transformer_.transformCallback(static_tf[i]);
+            }
+
+            Transformation T;
+            if (!transformer_.lookupTransform(pc->header.frame_id,world_frame_,pc->header.stamp,&T)) {
+                ROS_INFO("Lookup transform returned false");
+                pQ1->push_back(pc);
+            } else {
+                insertPointcloud(pc);
+            }
+            continue;
+        }
+        tf2_msgs::TFMessage::ConstPtr tf = m.instantiate<tf2_msgs::TFMessage>();
+        if (tf != nullptr) {
+            for(size_t i=0;i<tf->transforms.size();i++) {
+                if (tf->transforms[i].header.stamp == ros::Time()) {
+                    static_tf.push_back(tf->transforms[i]);
+                }
+                transformer_.transformCallback(tf->transforms[i]);
+#if 0
+                ROS_INFO("Added tf from %s to %s at %f",
+                        tf->transforms[i].header.frame_id.c_str(),
+                        tf->transforms[i].child_frame_id.c_str(),
+                        tf->transforms[i].header.stamp.toSec());
+#endif
+
+            }
+            continue;
+        }
+    }
+
+    bag.close();
+    ROS_INFO("Completed bag '%s'",bagfile.c_str());
+    updateMesh();
+    generateMesh();
+    ROS_INFO("Process bag terminated");
 }
 
 void TsdfServer::processPointCloudMessageAndInsert(
@@ -543,6 +644,7 @@ bool TsdfServer::generateMesh() {
 
   publish_mesh_timer.Stop();
 
+  ROS_INFO("Saving '%s'",mesh_filename_.c_str());
   if (!mesh_filename_.empty()) {
     timing::Timer output_mesh_timer("mesh/output");
     const bool success = outputMeshLayerAsPly(mesh_filename_, *mesh_layer_);

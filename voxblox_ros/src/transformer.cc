@@ -77,8 +77,10 @@ bool Transformer::lookupTransform(const std::string& from_frame,
                                   Transformation* transform) {
   CHECK_NOTNULL(transform);
   if (use_tf_transforms_) {
+      // ROS_INFO("lookupTransformTf");
     return lookupTransformTf(from_frame, to_frame, timestamp, transform);
   } else {
+      // ROS_INFO("lookupTransformQueue");
     return lookupTransformQueue(timestamp, transform);
   }
 }
@@ -122,9 +124,15 @@ bool Transformer::lookupTransformQueue(const ros::Time& timestamp,
                                        Transformation* transform) {
   CHECK_NOTNULL(transform);
   if (transform_queue_.empty()) {
+#if 1
     ROS_WARN_STREAM_THROTTLE(30, "No match found for transform timestamp: "
                                      << timestamp
                                      << " as transform queue is empty.");
+#else
+    ROS_WARN_STREAM("No match found for transform timestamp: "
+                                     << timestamp
+                                     << " as transform queue is empty.");
+#endif
     return false;
   }
   // Try to match the transforms in the queue.
@@ -155,11 +163,19 @@ bool Transformer::lookupTransformQueue(const ros::Time& timestamp,
     // If we think we have an inexact match, have to check that we're still
     // within bounds and interpolate.
     if (it == transform_queue_.begin() || it == transform_queue_.end()) {
+#if 1
       ROS_WARN_STREAM_THROTTLE(
           30, "No match found for transform timestamp: "
                   << timestamp
                   << " Queue front: " << transform_queue_.front().header.stamp
                   << " back: " << transform_queue_.back().header.stamp);
+#else
+      ROS_WARN_STREAM(
+          "No match found for transform timestamp: "
+                  << timestamp
+                  << " Queue front: " << transform_queue_.front().header.stamp
+                  << " back: " << transform_queue_.back().header.stamp);
+#endif
       return false;
     }
     // Newest should be 1 past the requested timestamp, oldest should be one
